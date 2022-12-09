@@ -1,6 +1,6 @@
 
 variable "credentials_file" { 
-  default = "/home/dan2880/apt-decorator-361922-34b0c8f8891f.json"
+  default = "/home/dan2880/apt-decorator-361922-a2477c5ceb44.json"
 }
 
 variable "project" {
@@ -35,8 +35,9 @@ resource "google_compute_network" "vpc_network" {
   name = "cis91-network"
 }
 
-resource "google_compute_instance" "vm_instance" {
-  name         = "cis91"
+resource "google_compute_instance" "webservers" {
+  count        = 3  
+  name         = "web${count.index}"
   machine_type = "e2-micro"
 
   boot_disk {
@@ -49,6 +50,9 @@ resource "google_compute_instance" "vm_instance" {
     network = google_compute_network.vpc_network.name
     access_config {
     }
+  }
+  labels = {
+    role: "web"
   }
 }
 
@@ -63,9 +67,11 @@ resource "google_compute_firewall" "default-firewall" {
 }
 
 output "external-ip" {
-  value = google_compute_instance.vm_instance.network_interface[0].access_config[0].nat_ip
+  value = google_compute_instance.webservers[*].network_interface[0].access_config[0].nat_ip
 }
-resource "google_compute_health_check" "webservers" {
+
+     
+     resource "google_compute_health_check" "webservers" {
   name = "webserver-health-check"
 
   timeout_sec        = 1
@@ -74,7 +80,8 @@ resource "google_compute_health_check" "webservers" {
   http_health_check {
     port = 80
   }
-}
+}     
+    
 resource "google_compute_instance_group" "webservers" {
   name        = "cis91-webservers"
   description = "Webserver instance group"
