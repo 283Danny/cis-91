@@ -1,6 +1,6 @@
 ---
 - hosts: all
-  name: Add cis-92 packages
+  name: Install required software
   become: yes
   tasks:
     - name: Install packages 
@@ -8,5 +8,56 @@
         update_cache: yes
         cache_valid_time: 3600
         name:
-          - python3-pip 
-          - python3-venv
+          - apache2
+          - php
+          - php-xml
+
+    - name: Create a ext4 filesystem for dokuwiki8
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/disk/by-id/google-dokuwiki8
+    
+    - name: Mount extra disk
+      ansible.posix.mount:
+        path: /var/www
+        src: /dev/disk/by-id/google-dokuwiki8
+        fstype: ext4
+        state: present
+
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: /var/www
+        state: directory
+    
+    - name: Extract dokuwiki-a6b3119b5d16cfdee29a855275c5759f.tgz into /var/www/html
+      ansible.builtin.unarchive:
+        src: /home/dan2880/cis-91/dokuwiki/dokuwiki-stable.tgz
+        dest: /var/www/html
+
+    - name: Change file ownership
+      ansible.builtin.file:
+        path: /var/www/html/dokuwiki
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+        
+    - name: Copy file with owner and permissions
+      ansible.builtin.copy:
+        src: backup
+        dest: /etc/cron.hourly/backup
+        owner: root
+        group: root
+        mode: '0744'
+
+    - name: Download logging file
+      ansible.builtin.get_url:
+        url: https://dl.google.com/cloudagents/add-logging-agent-repo.sh
+        dest: /tmp/add-logging-agent-repo.sh
+        mode: '0744'
+
+    - name: Run a script using an executable in a non-system path
+      command:  sudo bash /tmp/add-logging-agent-repo.sh --also-install
+      
+    
+        
